@@ -93,7 +93,7 @@ func LoadEnv() {
 		return
 	}
 
-	log.Infow("Environment Loading", "event", "config", "message", fmt.Sprint("loading env from", path))
+	log.Infow("Environment Loading", "event", "config", "message", fmt.Sprint("loading env from ", path))
 
 	err = godotenv.Load(path)
 

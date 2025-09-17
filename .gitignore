@@ -4,6 +4,5 @@
 /vendor
 coverage.out
 .env
-.env.*
 .migrate
 /dist
