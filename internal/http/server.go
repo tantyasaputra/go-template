@@ -7,12 +7,12 @@ import (
 	"go-template/internal/service/example"
 
 	"github.com/alexliesenfeld/health"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 )
 
 // Server is working as http handler
 type Server struct {
-	router        *mux.Router
+	engine        *gin.Engine
 	dataHandler   database.DataHandler
 	service       *Services
 	healthChecker health.Checker
@@ -29,22 +29,24 @@ func NewServer(
 	serv *Services,
 ) *Server {
 	s := &Server{
-		router:      mux.NewRouter(),
+		engine:      gin.New(),
 		dataHandler: dh,
 		service:     serv,
 	}
 
 	s.healthChecker = s.buildHealth()
 
-	s.router.Use(LoggingMiddleware())
+	// middlewares
+	s.engine.Use(LoggingMiddleware())
+	s.engine.Use(gin.Recovery())
 
 	s.routes()
 	return s
 }
 
-// Build return mux router
-func (s *Server) Build() *mux.Router {
-	return s.router
+// Build return gin engine
+func (s *Server) Build() *gin.Engine {
+	return s.engine
 }
 
 func (s *Server) buildHealth() health.Checker {

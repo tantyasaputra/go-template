@@ -2,29 +2,26 @@ package http
 
 import (
 	"go-template/internal/log"
-	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) example() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := s.service.ExampleService.ExampleAdd(r.Context(), []string{
+func (s *Server) example() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := s.service.ExampleService.ExampleAdd(c.Request.Context(), []string{
 			"User 1",
 			"User 2",
 		})
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			c.Status(500)
 			return
 		}
-		get, err := s.service.ExampleService.ExampleGet(r.Context())
+		get, err := s.service.ExampleService.ExampleGet(c.Request.Context())
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			c.Status(500)
 			return
 		}
-		// get file from request
-		// call parser using file
-		// convert to standard format
-		// concurrency -> call service
 		log.Infow("Controller Info", "event", "service result", "message", get)
-		w.WriteHeader(http.StatusOK)
+		c.Status(200)
 	}
 }

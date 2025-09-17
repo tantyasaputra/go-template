@@ -2,35 +2,34 @@ package http
 
 import (
 	"go-template/internal/log"
-	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 const requestIDKey = "REQUEST_ID"
 
-func LoggingMiddleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				requestID, ok := r.Context().Value(requestIDKey).(string)
-				if !ok {
-					requestID = "unknown"
-				}
+func LoggingMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			requestID, ok := c.Request.Context().Value(requestIDKey).(string)
+			if !ok {
+				requestID = "unknown"
+			}
 
-				if strings.Contains(r.URL.Path, "/health") {
-					return
-				}
+			if strings.Contains(c.Request.URL.Path, "/health") {
+				return
+			}
 
-				log.Infow("Http Traffic",
-					"request id", requestID,
-					"http method", r.Method,
-					"url fragment", r.URL.Path,
-					"client address", r.RemoteAddr,
-					"user agent", r.UserAgent(),
-					"event", "request received")
-			}()
+			log.Infow("Http Traffic",
+				"request id", requestID,
+				"http method", c.Request.Method,
+				"url fragment", c.Request.URL.Path,
+				"client address", c.ClientIP(),
+				"user agent", c.Request.UserAgent(),
+				"event", "request received")
+		}()
 
-			next.ServeHTTP(w, r)
-		})
+		c.Next()
 	}
 }

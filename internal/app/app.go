@@ -17,49 +17,49 @@ import (
 
 	examplePG "go-template/internal/repository/example/postgres"
 
-	"github.com/rs/cors"
+	"github.com/gin-contrib/cors"
 )
 
 // Run is entry point
 func Run(cfg *config.Config) int {
-	// Setup CORS
-	var allowedOrigins []string = []string{
-		"https://*.internal.xfers.com", // PRODUCTION + STAGING
-		"https://*.internal.fazz.com",  // PRODUCTION + STAGING
-	}
-
-	// on development/local
-	if strings.EqualFold(cfg.DEVMODE, "true") {
-		allowedOrigins = []string{"*"}
-	}
-
-	cors := cors.New(cors.Options{
-		AllowedOrigins:   allowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	})
-
 	// Initiate Data Handler (GORM)
 	var dataHandler database.DataHandler = database.NewDataHandler(cfg.DB)
 	// Initiate Repository
 	exampleRepo := examplePG.NewExampleRepository(dataHandler)
 	// Initiate Service
 	exampleService := example.NewExampleService(exampleRepo)
+
+	engine := internalHttp.NewServer(
+		dataHandler,
+		&internalHttp.Services{
+			ExampleService: exampleService,
+		},
+	).Build()
+
+	// Configure CORS using gin middleware
+	corsCfg := cors.Config{
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposeHeaders:    []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300 * time.Second,
+	}
+	if strings.EqualFold(cfg.DEVMODE, "true") {
+		corsCfg.AllowAllOrigins = true
+	} else {
+		corsCfg.AllowOriginFunc = func(origin string) bool {
+			return strings.HasSuffix(origin, ".internal.xfers.com") || strings.HasSuffix(origin, ".internal.fazz.com")
+		}
+	}
+	engine.Use(cors.New(corsCfg))
+
 	s := &http.Server{
 		Addr: "0.0.0.0:" + cfg.PORT,
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 600,
 		ReadTimeout:  time.Second * 600,
 		IdleTimeout:  time.Second * 600,
-		Handler: cors.Handler(internalHttp.NewServer(
-			dataHandler,
-			&internalHttp.Services{
-				ExampleService: exampleService,
-			},
-		).Build()),
+		Handler:      engine,
 	}
 	go func() {
 		log.Infow("Http Listening Initiated", "event", "http init", "port", cfg.PORT)

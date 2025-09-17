@@ -1,15 +1,14 @@
 package http
 
 import (
-	"net/http"
-
 	"github.com/alexliesenfeld/health"
+	"github.com/gin-gonic/gin"
 )
 
 // list of all routes and their handler
 func (s *Server) routes() {
 	// health checking
-	s.router.HandleFunc("/health", health.NewHandler(s.healthChecker)).Methods(http.MethodGet)
+	s.engine.GET("/health", gin.WrapH(health.NewHandler(s.healthChecker)))
 
-	s.router.HandleFunc("/sample", s.example()).Methods("GET")
+	s.engine.GET("/sample", s.example())
 }
